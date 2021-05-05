@@ -1,0 +1,10 @@
+{
+    "scripts": {
+        "start": "node src/main.js"
+    },
+    "type": "module",
+    "dependencies": {
+        "chokidar": "^3.5.1",
+        "unzipper": "^0.10.11"
+    }
+}
