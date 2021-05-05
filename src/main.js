@@ -49,6 +49,9 @@ const watcher = chokidar.watch(config.downloadsPath, {
 
 function sizeDescriptor(size) {
     const k = 1024;
+    if (size >= k * k * k) {
+        return (size / (k * k * k)).toFixed(1) + " GiB";
+    }
     if (size >= k * k) {
         return (size / (k * k)).toFixed(1) + " MiB";
     }
