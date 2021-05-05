@@ -5,6 +5,9 @@ import childProcess from "child_process";
 import * as env from "./env.js";
 import unzipper from "unzipper";
 import chokidar from "chokidar";
+import c from "ansi-colors";
+
+console.clear();
 
 const CONFIG_PATH = "./config.json";
 
@@ -12,7 +15,14 @@ const CONFIG_PATH = "./config.json";
 
 class ConfigDefault {
     constructor() {
-        this.downloadsPath = env.isWsl() ? "/mnt/c/Default/Downloads" : "C:\\Users\\Default\\Downloads";
+        let platformDefaults = {
+            wsl: "/mnt/c/Default/Downloads",
+            win32: "C:\\Users\\Default\\Downloads",
+            darwin: "~/Downloads",
+            linux: "~/Downloads",
+        };
+        this.downloadsPath = platformDefaults[env.getRunningPlatform()] || "";
+        this.deleteZipFileAfterwards = true;
     }
 }
 
@@ -28,7 +38,7 @@ if (fs.existsSync(CONFIG_PATH)) {
 
 // WSL warning (fs.watch is broken on WSL2)
 if (env.isWsl()) {
-    console.warn("warning: this program may not work properly on WSL2");
+    console.warn(c.yellow("Warning: this program may not work properly on WSL"));
 }
 
 const watcher = chokidar.watch(config.downloadsPath, {
@@ -68,7 +78,7 @@ function awaitPotentiallyBusyResource(path) {
 }
 
 watcher.on("ready", () => {
-    console.log("Ready.");
+    console.log(c.green("Ready."));
 
     watcher.on("add", (newPath) => {
         // ensure that the new file is in the base directory
@@ -81,19 +91,22 @@ watcher.on("ready", () => {
         while (fs.existsSync(outDir)) {
             outDir = outDir + "_1";
         }
-        console.log(`Unzipping ${newPath} (${sizeDescriptor(fs.statSync(newPath).size)})...`);
+        // log
+        let sizeDescription = c.magenta(`(${sizeDescriptor(fs.statSync(newPath).size)} compressed)`);
+        process.stdout.write(`Unzipping ${c.cyan(newPath)} ${sizeDescription}...`);
 
         // try to unzip the file
         awaitPotentiallyBusyResource(newPath)
             .pipe(unzipper.Extract({ path: outDir }))
             .on("error", (err) => {
-                console.log(`An error occurred while trying to unzip file ${newPath}: ${err}`);
+                console.log();
+                console.log(c.red(`An error occurred while trying to unzip file ${c.magenta(newPath)}: ${err}`));
             })
             .on("close", () => {
                 // this function is called if the file was unzipped successfully
-                // try to remove this file
+                console.log(c.green("done"));
 
-                fs.unlinkSync(newPath);
+                if (config.deleteZipFileAfterwards) fs.unlinkSync(newPath);
             });
     });
 });
